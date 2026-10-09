@@ -1,0 +1,180 @@
+# Orchard Full-Stack Quality Lab
+
+A local practice storefront and full-stack Playwright/TypeScript test framework. The browser UI,
+REST API, and SQLite database are part of one application; UI/API/database tests exercise the real
+backend and do not replace it with mocks. Payment is simulated and no email is sent.
+
+## Prerequisites
+
+- Node.js 22.13 or later and npm (the application uses `node:sqlite`)
+- Chromium for local browser tests: `npx playwright install chromium`
+- Optional: Docker Compose v2 for containerized runs
+- Optional: Jenkins with Docker Pipeline, JUnit, and Workspace Cleanup plugins
+
+The `.nvmrc` records the supported Node major version. The CI image and test image use Playwright
+1.64.0 to match the version in the lockfile.
+
+## Architecture
+
+```text
+src/server.ts                 HTTP server, API routes, SQLite schema/seed and static files
+public/                       Storefront, styles, assets, and OpenAPI document
+scripts/start-test.ts         Disposable, isolated test-server startup and database reset
+tests/
+  fixtures/test.ts            Test-scoped Playwright page-object and API-client fixtures
+  ui/pages/                   UI page objects for authentication, catalog, and checkout
+  ui/specs/ui.spec.ts          UI journeys
+  api/clients/                 Typed API request clients and shared request/response types
+  api/specs/api.spec.ts         REST API contract and lifecycle coverage
+  db/helpers/database.ts       Direct SQLite test connection
+  db/specs/db.spec.ts           Persisted-state and integrity checks
+  utils/helpers.ts              Shared test data and end-to-end setup
+```
+
+POM is confined to browser interactions. API clients wrap Playwright's `APIRequestContext`;
+database assertions use `node:sqlite` directly. The suite runs with one worker because it validates
+shared inventory and the seeded catalog; each test run nevertheless receives a unique disposable
+database. The demo database is not used by the test server.
+
+## Install and run locally
+
+```bash
+npm ci
+npx playwright install chromium
+npm run start
+```
+
+To create a local `.env` on Windows PowerShell (optional; defaults work without one):
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Open `http://127.0.0.1:3000/`. The API is on the same origin at `/api`; health is
+`/api/health`. Stop the server with `Ctrl+C`. The demo sign-in is `test14@gmail.com` /
+`Test1454test` (local training only).
+
+`.env` is optional and ignored by Git. Supported application variables:
+
+| Variable        | Default                               | Purpose                                                                            |
+| --------------- | ------------------------------------- | ---------------------------------------------------------------------------------- |
+| `NODE_ENV`      | `development`                         | Runtime mode; production enables secure cookies and disables the demo account seed |
+| `PORT`          | `3000`                                | HTTP listening port                                                                |
+| `DATABASE_PATH` | `data/orchard.sqlite`                 | SQLite file used by the application                                                |
+| `QA_MODE`       | `true`                                | Allows demo password-reset tokens outside production                               |
+| `BASE_URL`      | `http://127.0.0.1:3100` in Playwright | An already-running server for external UI/API testing                              |
+
+Never use real credentials or customer data. To change a setting, edit your local `.env`; CI uses
+explicit non-secret defaults and requires no developer `.env`.
+
+## Test commands
+
+```bash
+npm test                 # all 21 UI, API, and database cases against a fresh local test server
+npm run test:ui           # browser workflows
+npm run test:api          # REST API tests
+npm run test:db           # direct SQLite persistence/integrity checks
+npm run test:headed       # run browser tests visibly
+npm run test:debug         # Playwright Inspector
+npm run test:report        # open the Playwright HTML report
+npm run allure:generate    # generate Allure HTML from the latest results
+npm run allure:open        # open the generated Allure report
+npm run typecheck
+npm run lint
+npm run format:check
+npm run ci                 # typecheck, lint, formatting, and all tests
+```
+
+Playwright starts its own test server on port 3100. A run uses a uniquely named SQLite file in the
+operating system's temporary directory. This prevents stale data and never resets
+`data/orchard.sqlite`. UI/API tests can target another
+already-running server by setting `BASE_URL`; direct DB tests are intentionally skipped in that
+mode. PowerShell example:
+
+```powershell
+$env:BASE_URL = 'http://127.0.0.1:3000'
+npm run test:ui
+Remove-Item Env:BASE_URL
+```
+
+`test-results/junit.xml`, `playwright-report/`, and `allure-results/` are generated by test runs.
+Playwright retains traces and screenshots on failure. Generate Allure HTML with the command
+above. Reports can contain test data; keep them private when sharing.
+
+## Docker
+
+Run the application with persistent SQLite data in the named `orchard-data` volume:
+
+```bash
+docker compose up --build -d app
+docker compose logs -f app
+docker compose down                 # keeps the named data volume
+docker compose down -v              # also removes the practice database volume
+```
+
+The app is available at `http://localhost:3000`; the container runs non-root with QA mode disabled.
+Run the full browser suite in the matching Playwright image and write reports back to the workspace:
+
+```bash
+docker compose --profile test run --build --rm tests
+```
+
+Alternatively, build/run tests directly:
+
+```bash
+docker build -f Dockerfile.test -t orchard-tests .
+docker run --rm -v "${PWD}/playwright-report:/app/playwright-report" -v "${PWD}/allure-results:/app/allure-results" -v "${PWD}/test-results:/app/test-results" orchard-tests
+```
+
+The test container starts its own disposable server and SQLite file; it does not depend on the app
+container or its database. On PowerShell, replace `${PWD}` with `$((Get-Location).Path)`.
+
+## CI
+
+### GitHub Actions
+
+`.github/workflows/ci.yml` runs on pushes to `main`, pull requests, and manual dispatch. It installs
+from the lockfile, installs Chromium, and runs typechecking, lint, formatting, and the complete
+suite. JUnit, HTML, Allure, traces, and screenshots are uploaded even after a failure.
+Download the `orchard-test-reports` artifact from the failed run; open `playwright-report/index.html`
+locally and use each failed test's trace to inspect browser actions and network activity. Adjust the
+push branch filter if the repository's primary branch is not `main`.
+
+### Jenkins
+
+Use a Jenkins agent with Docker available and install the Docker Pipeline, JUnit, and Workspace
+Cleanup plugins. `Jenkinsfile` runs in the Playwright 1.64.0 image, installs with `npm ci`, runs the
+quality gates and tests, publishes `test-results/junit.xml`, and archives diagnostics in `post`
+even when a stage fails. The pipeline requires no credentials for the local practice suite; store
+any future sensitive CI values in Jenkins Credentials, not in the Jenkinsfile.
+
+## Extending the framework
+
+- **New UI page:** add a typed page object under `tests/ui/pages/`, inject `Page` in its constructor,
+  expose interactions/observable locators, register it in `tests/fixtures/test.ts`, and assert
+  outcomes in a UI spec.
+- **New API resource:** add shared paths and request/response types under `tests/api/clients/`, add a
+  client using `APIRequestContext`, then expose it through the fixture and test real responses.
+- **New database assertion:** use `openTestDatabase()` from `tests/db/helpers/database.ts`; use
+  parameterized SQL and always close the connection in `finally`.
+- **New test data:** use `uniqueEmail()` from `tests/utils/helpers.ts`; do not depend on test order
+  or reuse mutable accounts/orders.
+- **New fixture:** add only test-scoped resources to `tests/fixtures/test.ts` and keep cleanup in the
+  fixture that owns the resource.
+- **New CI setting:** document a safe default in `.env.example` and README. Configure actual secrets
+  in GitHub Actions/Jenkins secret stores, never in tracked files or report artifacts.
+
+## Database and troubleshooting
+
+The normal local app uses `data/orchard.sqlite`; test runs create their own transient database in the
+operating system's temporary directory. To reset local practice data, stop the app and remove only `data/orchard.sqlite` and its
+`-wal`/`-shm` companions; the next start recreates the schema, seed products, and local demo account.
+Never point test tooling at valuable or production data.
+
+- **Node version / `node:sqlite` error:** install Node.js 22.13+ and verify with `node --version`.
+- **Browser missing:** run `npx playwright install chromium`.
+- **Port 3100 busy:** close the other process using the test port before running `npm test`.
+- **Tests fail after changing code:** inspect `playwright-report/index.html`, the JUnit XML, and
+  failure trace; rerun one layer with `npm run test:ui`, `npm run test:api`, or `npm run test:db`.
+- **Docker browser mismatch:** rebuild `Dockerfile.test`; it is pinned to the Playwright version in
+  `package-lock.json`.

@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    volumes:
+      - orchard-data:/app/data
+    environment:
+      PORT: '3000'
+      DATABASE_PATH: /app/data/orchard.sqlite
+      QA_MODE: 'false'
+    restart: unless-stopped
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      CI: 'true'
+    volumes:
+      - ./playwright-report:/app/playwright-report
+      - ./allure-results:/app/allure-results
+      - ./test-results:/app/test-results
+    profiles: ['test']
+
+volumes:
+  orchard-data:

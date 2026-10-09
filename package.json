@@ -1,0 +1,41 @@
+{
+  "name": "orchard-fullstack-quality-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Single-origin Playwright UI, API and SQLite database automation practice application",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env --experimental-strip-types src/server.ts",
+    "dev": "npm run start",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test tests/ui/specs",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report",
+    "allure:generate": "allure generate allure-results --clean -o allure-report",
+    "allure:open": "allure open allure-report",
+    "typecheck": "tsc --noEmit",
+    "start:test": "node --experimental-strip-types scripts/start-test.ts",
+    "test:api": "playwright test tests/api/specs",
+    "test:db": "playwright test tests/db/specs",
+    "test:ui-mode": "playwright test --ui",
+    "lint": "eslint src tests scripts playwright.config.ts",
+    "format": "prettier --write \"playwright.config.ts\" \"tests/**/*.ts\" \"scripts/**/*.ts\" \"package.json\" \"tsconfig.json\" \"eslint.config.js\" \".github/workflows/ci.yml\" \"compose.yaml\" \"README.md\" \".prettierrc.json\"",
+    "format:check": "prettier --check \"playwright.config.ts\" \"tests/**/*.ts\" \"scripts/**/*.ts\" \"package.json\" \"tsconfig.json\" \"eslint.config.js\" \".github/workflows/ci.yml\" \"compose.yaml\" \"README.md\" \".prettierrc.json\"",
+    "ci": "npm run typecheck && npm run lint && npm run format:check && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^22.15.0",
+    "allure-commandline": "^2.46.1",
+    "allure-playwright": "^3.13.0",
+    "eslint": "^10.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.71.1"
+  },
+  "type": "module"
+}
