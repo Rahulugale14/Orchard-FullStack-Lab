@@ -1,43 +1,78 @@
+
 pipeline {
-  agent {
-    docker {
-      image 'mcr.microsoft.com/playwright:v1.64.0-noble'
-      args '--user root'
+    agent any
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+        disableConcurrentBuilds()
     }
-  }
-  options {
-    timeout(time: 20, unit: 'MINUTES')
-    timestamps()
-    disableConcurrentBuilds()
-  }
-  environment {
-    CI = 'true'
-  }
-  stages {
-    stage('Checkout') {
-      steps { checkout scm }
+
+    environment {
+        CI = 'true'
     }
-    stage('Install') {
-      steps { sh 'npm ci' }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Environment Check') {
+            steps {
+                bat 'node --version'
+                bat 'npm --version'
+                bat 'git --version'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                bat 'npm ci'
+            }
+        }
+
+        stage('Install Playwright Browser') {
+            steps {
+                bat 'npx playwright install chromium'
+            }
+        }
+
+        stage('Quality Gates') {
+            steps {
+                bat 'npm run typecheck'
+                bat 'npm run lint'
+                bat 'npm run format:check'
+            }
+        }
+
+        stage('Run UI API DB Tests') {
+            steps {
+                bat 'npm test'
+            }
+        }
     }
-    stage('Quality gates') {
-      steps {
-        sh 'npm run typecheck'
-        sh 'npm run lint'
-        sh 'npm run format:check'
-      }
+
+    post {
+        always {
+            archiveArtifacts(
+                artifacts: 'playwright-report/**,allure-results/**,test-results/**',
+                allowEmptyArchive: true
+            )
+        }
+
+        success {
+            echo 'Playwright pipeline completed successfully.'
+        }
+
+        failure {
+            echo 'Build failed. Check the stage and console output.'
+        }
+
+        cleanup {
+            cleanWs()
+        }
     }
-    stage('Playwright tests') {
-      steps { sh 'npm test' }
-    }
-  }
-  post {
-    always {
-      junit allowEmptyResults: true, testResults: 'test-results/junit.xml'
-      archiveArtifacts allowEmptyArchive: true, artifacts: 'playwright-report/**,allure-results/**,test-results/**'
-    }
-    cleanup {
-      cleanWs()
-    }
-  }
 }
+
