@@ -70,7 +70,7 @@ explicit non-secret defaults and requires no developer `.env`.
 ## Test commands
 
 ```bash
-npm test                 # all 21 UI, API, and database cases against a fresh local test server
+npm test                 # all 31 UI, API, and database cases against a fresh local test server
 npm run test:ui           # browser workflows
 npm run test:api          # REST API tests
 npm run test:db           # direct SQLite persistence/integrity checks
@@ -157,8 +157,8 @@ any future sensitive CI values in Jenkins Credentials, not in the Jenkinsfile.
   client using `APIRequestContext`, then expose it through the fixture and test real responses.
 - **New database assertion:** use `openTestDatabase()` from `tests/db/helpers/database.ts`; use
   parameterized SQL and always close the connection in `finally`.
-- **New test data:** use `uniqueEmail()` from `tests/utils/helpers.ts`; do not depend on test order
-  or reuse mutable accounts/orders.
+- **New test data:** use `uniqueEmail()` from `tests/utils/helpers.ts`; parameterize related UI
+  cases with input datasets, and do not depend on test order or reuse mutable accounts/orders.
 - **New fixture:** add only test-scoped resources to `tests/fixtures/test.ts` and keep cleanup in the
   fixture that owns the resource.
 - **New CI setting:** document a safe default in `.env.example` and README. Configure actual secrets
