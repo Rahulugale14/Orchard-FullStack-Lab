@@ -21,6 +21,7 @@ export default defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],
     ['allure-playwright'],
+    ['./scripts/allure-report-reporter.ts'],
   ],
   timeout: 30_000,
   expect: { timeout: 7_000 },
@@ -31,7 +32,11 @@ export default defineConfig({
     video: 'off',
     ...devices['Desktop Chrome'],
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
   webServer: isExternal
     ? undefined
     : {

@@ -2,7 +2,12 @@ import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export default async function prepareTestRun(): Promise<void> {
-  for (const directory of ['allure-results', 'playwright-report', 'test-results']) {
+  for (const directory of [
+    'allure-results',
+    'allure-report',
+    'playwright-report',
+    'test-results',
+  ]) {
     const outputDirectory = resolve(directory);
 
     // Preserve the directory itself for Docker bind mounts.

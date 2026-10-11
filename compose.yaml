@@ -22,6 +22,7 @@ services:
     volumes:
       - ./playwright-report:/app/playwright-report
       - ./allure-results:/app/allure-results
+      - ./allure-report:/app/allure-report
       - ./test-results:/app/test-results
     profiles: ['test']
 

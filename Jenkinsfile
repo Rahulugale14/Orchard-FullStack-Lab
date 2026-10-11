@@ -33,9 +33,9 @@ pipeline {
             }
         }
 
-        stage('Install Playwright Browser') {
+        stage('Install Playwright Browsers') {
             steps {
-                bat 'npx playwright install chromium'
+                bat 'npx playwright install chromium firefox webkit'
             }
         }
 
@@ -57,7 +57,7 @@ pipeline {
     post {
         always {
             archiveArtifacts(
-                artifacts: 'playwright-report/**,allure-results/**,test-results/**',
+                artifacts: 'playwright-report/**,allure-results/**,allure-report/**,test-results/**',
                 allowEmptyArchive: true
             )
         }
@@ -75,4 +75,3 @@ pipeline {
         }
     }
 }
-
